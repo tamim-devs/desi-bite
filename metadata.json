@@ -1,0 +1,6 @@
+{
+  "name": "DESHI BITE - Sales, Stock & Agent Management",
+  "description": "Sales, Stock, Agent & Business Management System for Frozen Food Business with real-time analytics, dynamic pricing, and Google Sheets integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
