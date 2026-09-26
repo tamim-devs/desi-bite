@@ -19,12 +19,18 @@ export const LoginView: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regAddress, setRegAddress] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    await login(phone.trim(), password);
-    setLoading(false);
-  };
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  setLoading(true);
+
+  await login(
+    phone.trim(),
+    password.trim()
+  );
+
+  setLoading(false);
+};
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

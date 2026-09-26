@@ -335,44 +335,86 @@ export async function createExpressApp() {
 
   // Auth: Login
   api.post('/auth/login', async (req, res) => {
-    await refreshStateFromMongo(false);
-    const { phone, password } = req.body;
+  try {
+    try {
+      await refreshStateFromMongo(false);
+    } catch (mongoError: any) {
+      console.warn(
+        '[Login] MongoDB unavailable, using local state:',
+        mongoError?.message || mongoError
+      );
+    }
+
+    const { phone, password } = req.body || {};
+
+    if (!phone || !password) {
+      return res.status(400).json({
+        error: 'Phone number and password are required',
+      });
+    }
 
     const cleanInputPhone = cleanPhoneNumber(phone);
+
     const user = db.users.find((u) => {
       const dbPhone = cleanPhoneNumber(u.phone);
-      return dbPhone === cleanInputPhone || u.phone === phone?.trim();
+
+      return (
+        dbPhone === cleanInputPhone ||
+        u.phone === String(phone).trim()
+      );
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid phone number or password' });
+      return res.status(401).json({
+        error: 'Invalid phone number or password',
+      });
     }
 
-    if (user.passwordHash?.trim() !== password?.trim()) {
-      return res.status(401).json({ error: 'Invalid phone number or password' });
+    if (
+      user.passwordHash?.trim() !==
+      String(password).trim()
+    ) {
+      return res.status(401).json({
+        error: 'Invalid phone number or password',
+      });
     }
 
     if (user.status === 'PENDING') {
       return res.status(403).json({
-        error: 'Your account registration is currently PENDING approval by an Administrator.',
+        error:
+          'Your account registration is currently PENDING approval by an Administrator.',
       });
     }
 
     if (user.status === 'REJECTED') {
       return res.status(403).json({
-        error: 'Your account registration has been rejected. Please contact DESHI BITE management.',
+        error:
+          'Your account registration has been rejected. Please contact DESHI BITE management.',
       });
     }
 
     if (user.status === 'SUSPENDED') {
       return res.status(403).json({
-        error: 'Your account is suspended. Please contact management.',
+        error:
+          'Your account is suspended. Please contact management.',
       });
     }
 
     const { passwordHash, ...safeUser } = user;
-    res.json({ success: true, user: safeUser });
-  });
+
+    return res.status(200).json({
+      success: true,
+      user: safeUser,
+    });
+  } catch (error: any) {
+    console.error('[Login Error]', error);
+
+    return res.status(500).json({
+      success: false,
+      error: error?.message || 'Internal server error',
+    });
+  }
+});
 
   // Auth: Register Agent
   api.post('/auth/register', async (req, res) => {
@@ -1156,22 +1198,24 @@ export async function createExpressApp() {
 export async function startServer() {
   const app = await createExpressApp();
 
-  // Vite Middleware in dev or static files in production
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     try {
-      // Dynamic import prevents vite from being required in production serverless environments
       const { createServer: createViteServer } = await import('vite');
+
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: 'spa',
       });
+
       app.use(vite.middlewares);
     } catch (e) {
       console.warn('Vite middleware could not be loaded:', e);
     }
   } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
+
     app.use(express.static(distPath));
+
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
@@ -1185,6 +1229,4 @@ export async function startServer() {
 }
 
 // Only auto-listen if not running as a serverless function
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-  startServer();
-}
+

@@ -283,35 +283,82 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     checkMongoStatus();
   }, []);
 
-  const login = async (phone: string, pass: string): Promise<boolean> => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phone.trim(), password: pass.trim() }),
-      });
-      const isJson = res.headers.get('content-type')?.includes('application/json');
-      const data = isJson ? await res.json() : null;
+ const login = async (
+  phone: string,
+  pass: string
+): Promise<boolean> => {
+  setLoading(true);
 
-      if (!res.ok) {
-        showToast(data?.error || `Login failed (${res.status}). Please check credentials.`, 'error');
-        setLoading(false);
-        return false;
-      }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone: phone.trim(),
+        password: pass.trim(),
+      }),
+    });
 
-      setCurrentUser(data.user);
-      sessionStorage.setItem('deshi_bite_user', JSON.stringify(data.user));
-      showToast(`Welcome back, ${data.user.name}!`, 'success');
-      setActiveTab('dashboard');
-      setLoading(false);
-      return true;
-    } catch (err: any) {
-      showToast('Network error while connecting to authentication service. Please check your connection.', 'error');
+    const contentType =
+      res.headers.get('content-type') || '';
+
+    const data = contentType.includes('application/json')
+      ? await res.json()
+      : null;
+
+    if (!res.ok) {
+      showToast(
+        data?.error ||
+          `Login failed (${res.status}). Please check credentials.`,
+        'error'
+      );
+
       setLoading(false);
       return false;
     }
-  };
+
+    if (!data?.user) {
+      showToast(
+        'Login response did not contain user information.',
+        'error'
+      );
+
+      setLoading(false);
+      return false;
+    }
+
+    setCurrentUser(data.user);
+
+    sessionStorage.setItem(
+      'deshi_bite_user',
+      JSON.stringify(data.user)
+    );
+
+    showToast(
+      `Welcome back, ${data.user.name}!`,
+      'success'
+    );
+
+    setActiveTab('dashboard');
+
+    setLoading(false);
+
+    return true;
+  } catch (error) {
+    console.error('[Frontend Login Error]', error);
+
+    showToast(
+      'Network error while connecting to authentication service.',
+      'error'
+    );
+
+    setLoading(false);
+
+    return false;
+  }
+};
 
   const registerAgent = async (data: { name: string; phone: string; password: string; address?: string }): Promise<boolean> => {
     setLoading(true);

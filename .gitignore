@@ -8,3 +8,4 @@ coverage/
 !.env.example
 .env.example
 .env
+.vercel
